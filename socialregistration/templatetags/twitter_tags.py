@@ -13,5 +13,5 @@ def twitter_button(context):
     if not 'request' in context:
         raise AttributeError, 'Please add the ``django.core.context_processors.request`` context processors to your settings.CONTEXT_PROCESSORS set'
     logged_in = context['request'].user.is_authenticated()
-    next = context['next'] if 'next' in context else None
+    next = context['request'].GET.get('next', None)
     return dict(next=next, logged_in=logged_in, request=context['request'], MEDIA_URL=settings.MEDIA_URL)

@@ -112,6 +112,10 @@ def facebook_login(request):
     params['display'] = getattr(settings, 'FACEBOOK_DISPLAY', 'popup')
     params['scope'] = getattr(settings, 'FACEBOOK_SCOPE', '')
 
+    # Set redirect
+    if request.POST.get('next', None):
+        request.session['next'] = request.POST.get('next')
+
     url = 'https://graph.facebook.com/oauth/authorize?' + urllib.urlencode(params)
 
     return HttpResponseRedirect(url)
