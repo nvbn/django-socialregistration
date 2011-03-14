@@ -26,7 +26,7 @@ class UserForm(forms.Form):
     def clean_username(self):
         username = self.cleaned_data.get('username')
         try:
-            user = User.objects.get(username=username)
+            user = User.objects.get(username__iexact=username)
         except User.DoesNotExist:
             return username
         else:
@@ -35,11 +35,11 @@ class UserForm(forms.Form):
     def clean_email(self):
         email = self.cleaned_data.get('email')
         try:
-            user = User.objects.get(email=email)
+            user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
             return email
         else:
-            raise forms.ValidationError(_('This e-mailaddress is already in use.'))
+            raise forms.ValidationError(_('This e-mailaddress is already in use. Please login with your account and connect it to social media, instead of creating a new account.'))
 
     def save(self):
         self.user.username = self.cleaned_data.get('username')
