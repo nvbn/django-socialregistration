@@ -292,7 +292,6 @@ def hyves(request):
             profile.save()
 
     login(request, user)
-    request.user.message_set.create(message=_('You have succesfully been logged in with your hyves account'))
 
     return HttpResponseRedirect(_get_next(request))
 
@@ -333,7 +332,6 @@ def linkedin(request):
         return HttpResponseRedirect(reverse('socialregistration_setup'))
 
     login(request, user)
-    request.user.message_set.create(message=_('You have succesfully been logged in with your linkedin account'))
 
     return HttpResponseRedirect(_get_next(request))
 
