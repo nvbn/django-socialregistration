@@ -10,6 +10,8 @@ from socialregistration.models import (FacebookProfile, TwitterProfile, HyvesPro
     FriendFeedProfile, OpenIDProfile)
 
 class Auth(object):
+    supports_object_permissions = False
+    supports_anonymous_user = False
     def get_user(self, user_id):
         try:
             return User.objects.get(pk=user_id)
