@@ -1,9 +1,3 @@
-"""
-Created on 22.09.2009
-
-@author: alen
-"""
-
 from django.db import models
 
 from django.contrib.auth import authenticate
@@ -16,6 +10,10 @@ class SocialProfile(models.Model):
     site = models.ForeignKey(Site, default=Site.objects.get_current)
     username = models.CharField(max_length=255)
     type = models.ForeignKey(ContentType, editable=False)
+
+    # Tokens
+    access_token = models.CharField(max_length=255, blank=True, null=True)
+    secret = models.CharField(max_length=255, blank=True, null=True)
 
     def get_instance(self):
         """ Returns the child instance """
@@ -32,7 +30,6 @@ class SocialProfile(models.Model):
 
 class FacebookProfile(SocialProfile):
     uid = models.CharField(max_length=255, blank=False, null=False)
-    access_token = models.CharField(max_length=255, blank=True, null=True)
 
     def __unicode__(self):
         return u'%s: %s' % (self.user, self.uid)
@@ -49,17 +46,6 @@ class TwitterProfile(SocialProfile):
     def authenticate(self):
         return authenticate(twitter_id=self.twitter_id)
 
-class HyvesProfile(SocialProfile):
-    hyves_id = models.CharField(max_length=255, blank=False, null=False)
-    avatar = models.URLField(verify_exists=False, max_length=255, blank=True)
-    url = models.URLField(verify_exists=False, max_length=255, blank=True)
-
-    def __unicode__(self):
-        return '%s: %s' % (self.user, self.hyves_id)
-
-    def authenticate(self):
-        return authenticate(hyves_id=self.hyves_id)
-
 class LinkedinProfile(SocialProfile):
     linkedin_id = models.CharField(max_length=255, blank=False, null=False)
 
@@ -69,12 +55,14 @@ class LinkedinProfile(SocialProfile):
     def authenticate(self):
         return authenticate(linkedin_id=self.linkedin_id)
 
-class FriendFeedProfile(models.Model):
-    user = models.ForeignKey(User)
-    site = models.ForeignKey(Site, default=Site.objects.get_current)
-
 class OpenIDProfile(SocialProfile):
     identity = models.TextField()
+
+    def __unicode__(self):
+        try:
+            return 'OpenID profile for %s, via provider %s' % (self.user, self.identity)
+        except User.DoesNotExist:
+            return 'OpenID profile for None, via provider None'
 
     def authenticate(self):
         return authenticate(identity=self.identity)
@@ -88,9 +76,14 @@ class OpenIDStore(models.Model):
     lifetime = models.IntegerField()
     assoc_type = models.TextField()
 
+    def __unicode__(self):
+        return u'OpenID Store %s for %s' % (self.server_url, self.site)
+
 class OpenIDNonce(models.Model):
     server_url = models.CharField(max_length=255)
     timestamp = models.IntegerField()
     salt = models.CharField(max_length=255)
     date_created = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return u'OpenID Nonce for %s' % self.server_url

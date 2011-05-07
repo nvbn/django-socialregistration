@@ -1,7 +1,8 @@
 """
-Created on 22.09.2009
 
-@author: alen
+Updated on 19.12.2009
+
+@author: alen, pinda
 Inspired by:
     http://github.com/leah/python-oauth/blob/master/oauth/example/client.py
     http://github.com/facebook/tornado/blob/master/tornado/auth.py
@@ -10,7 +11,6 @@ import time
 import base64
 import urllib
 import urllib2
-import re
 
 # parse_qsl was moved from the cgi namespace to urlparse in Python2.6.
 # this allows backwards compatibility
@@ -23,6 +23,7 @@ from xml.dom import minidom
 
 import oauth2 as oauth
 from openid.consumer import consumer as openid
+from openid.consumer.discover import DiscoveryFailure
 from openid.store.interface import OpenIDStore as OIDStore
 from openid.association import Association as OIDAssociation
 
@@ -73,14 +74,30 @@ class OpenIDStore(OIDStore):
         if stored_assocs.count() == 0:
             return None
 
-        stored_assoc = stored_assocs[0]
+        return_val = None
 
-        assoc = OIDAssociation(
-            stored_assoc.handle, base64.decodestring(stored_assoc.secret),
-            stored_assoc.issued, stored_assoc.lifetime, stored_assoc.assoc_type
+        for stored_assoc in stored_assocs:
+            assoc = OIDAssociation(
+                stored_assoc.handle, base64.decodestring(stored_assoc.secret),
+                stored_assoc.issued, stored_assoc.lifetime, stored_assoc.assoc_type
+            )
+
+            if assoc.getExpiresIn() == 0:
+                stored_assoc.delete()
+            else:
+                if return_val is None:
+                    return_val = assoc
+
+        return return_val
+
+    def removeAssociation(self, server_url, handle):
+        stored_assocs = OpenIDStoreModel.objects.filter(
+            server_url=server_url
         )
+        if handle:
+            stored_assocs = stored_assocs.filter(handle=handle)
 
-        return assoc
+        stored_assocs.delete()
 
     def useNonce(self, server_url, timestamp, salt):
         try:
@@ -113,9 +130,8 @@ class OpenID(object):
         self.endpoint = endpoint
         self.store = OpenIDStore()
         self.consumer = openid.Consumer(self.request.session, self.store)
-
         self.result = None
-
+                    
     def get_redirect(self):
         auth_request = self.consumer.begin(self.endpoint)
         redirect_url = auth_request.redirectURL(
@@ -137,6 +153,7 @@ class OpenID(object):
 
         return self.result.status == openid.SUCCESS
 
+
 def get_token_prefix(url):
     """
     Returns a prefix for the token to store in the session so we can hold
@@ -148,7 +165,10 @@ def get_token_prefix(url):
         returns ``twitter.com``
 
     """
-    return urllib2.urlparse.urlparse(url).netloc
+    try:
+        return urllib2.urlparse.urlparse(url).netloc
+    except AttributeError:
+        return urllib2.rulparse.urlparse(url)[1]
 
 
 class OAuthError(Exception):
@@ -157,7 +177,7 @@ class OAuthError(Exception):
 class OAuthClient(object):
 
     def __init__(self, request, consumer_key, consumer_secret, request_token_url,
-        access_token_url, authorization_url, callback_url, verifier=None, parameters=None):
+        access_token_url, authorization_url, callback_url, parameters=None):
 
         self.request = request
 
@@ -174,7 +194,6 @@ class OAuthClient(object):
         self.signature_method = oauth.SignatureMethod_HMAC_SHA1()
 
         self.parameters = parameters
-        self.verifier = verifier
 
         self.callback_url = callback_url
 
@@ -188,7 +207,15 @@ class OAuthClient(object):
         sign the request to obtain the access token
         """
         if self.request_token is None:
-            response, content = self.client.request(self.request_token_url, "GET")
+            if self.callback_url is not None:
+                params = urllib.urlencode([
+                    ('oauth_callback', 'http://%s%s' % (Site.objects.get_current(),
+                        reverse(self.callback_url))),
+                ])
+                request_token_url = '%s?%s' % (self.request_token_url, params)
+            else:
+                request_token_url = self.request_token_url
+            response, content = self.client.request(request_token_url, "GET")
             if response['status'] != '200':
                 raise OAuthError(
                     _('Invalid response while obtaining request token from "%s".') % get_token_prefix(self.request_token_url))
@@ -203,8 +230,9 @@ class OAuthClient(object):
         if self.access_token is None:
             request_token = self._get_rt_from_session()
             token = oauth.Token(request_token['oauth_token'], request_token['oauth_token_secret'])
-            if self.verifier:
-                token.set_verifier(self.verifier)
+            if self.callback_url is not None:
+                # If a callback_url is provided, the callback has to include a verifier.
+                token.set_verifier(self.request.GET.get('oauth_verifier'))
             self.client = oauth.Client(self.consumer, token)
             response, content = self.client.request(self.access_token_url, "GET")
             if response['status'] != '200':
@@ -226,9 +254,8 @@ class OAuthClient(object):
 
     def _get_authorization_url(self):
         request_token = self._get_request_token()
-        return '%s?oauth_token=%s&oauth_callback=%s' % (self.authorization_url,
-            request_token['oauth_token'], '%s%s' % (Site.objects.get_current().domain,
-                reverse(self.callback_url)))
+        return '%s?oauth_token=%s' % (self.authorization_url,
+            request_token['oauth_token'])
 
     def is_valid(self):
         try:
@@ -304,24 +331,3 @@ class OAuthTwitter(OAuth):
     def get_user_info(self):
         user = simplejson.loads(self.query(self.url))
         return user
-
-class OAuthLinkedin(OAuth):
-    """
-    Verifying linkedin credentials
-    """
-    url = 'http://api.linkedin.com/v1/people/~:(id,first-name,last-name)'
-
-    def get_user_info(self):
-        user = dict()
-        user_xml = self.query(self.url)
-
-        xml = minidom.parseString(user_xml)
-        user['id'] = xml.getElementsByTagName('id')[0].childNodes[0].nodeValue
-        first_name = xml.getElementsByTagName('first-name')[0].childNodes[0].nodeValue
-        last_name = xml.getElementsByTagName('last-name')[0].childNodes[0].nodeValue
-
-        user['screen_name'] = '%(first_name)s %(last_name)s' % {'first_name': first_name,
-                                                                'last_name': last_name }
-
-        return user
-

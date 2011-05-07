@@ -1,13 +1,7 @@
-"""
-Created on 22.09.2009
-
-@author: alen
-"""
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 
-from socialregistration.models import (FacebookProfile, TwitterProfile, HyvesProfile, LinkedinProfile,
-    FriendFeedProfile, OpenIDProfile)
+from socialregistration.models import (FacebookProfile, TwitterProfile, OpenIDProfile)
 
 class Auth(object):
     supports_object_permissions = False
@@ -25,7 +19,7 @@ class FacebookAuth(Auth):
                 uid=uid,
                 site=Site.objects.get_current()
             ).user
-        except:
+        except FacebookProfile.DoesNotExist:
             return None
 
 class TwitterAuth(Auth):
@@ -35,27 +29,7 @@ class TwitterAuth(Auth):
                 twitter_id=twitter_id,
                 site=Site.objects.get_current()
             ).user
-        except:
-            return None
-
-class HyvesAuth(Auth):
-    def authenticate(self, hyves_id=None):
-        try:
-            return HyvesProfile.objects.get(
-                hyves_id=hyves_id,
-                site=Site.objects.get_current()
-            ).user
-        except:
-            return None
-
-class LinkedinAuth(Auth):
-    def authenticate(self, linkedin_id=None):
-        try:
-            return LinkedinProfile.objects.get(
-                linkedin_id=linkedin_id,
-                site=Site.objects.get_current()
-            ).user
-        except:
+        except TwitterProfile.DoesNotExist:
             return None
 
 class OpenIDAuth(Auth):
@@ -65,5 +39,5 @@ class OpenIDAuth(Auth):
                 identity=identity,
                 site=Site.objects.get_current()
             ).user
-        except:
+        except OpenIDProfile.DoesNotExist:
             return None

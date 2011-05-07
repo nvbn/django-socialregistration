@@ -1,104 +1,220 @@
-==========================
 Django Social Registration
 ==========================
 
-Django Social Registration enables developers to add alternative registration
-methods based on third party sites.
+Django Social Registration enables developers to add alternative
+registration methods based on third party sites.
+
+Supported methods currently are:
+
+-  OpenID
+-  OAuth
+-  Facebook Connect
 
 Requirements
-============
-django
-oauth
-python-openid
-pyfacebook
+------------
+
+-  `Django <http://pypi.python.org/pypi/django/>`_
+-  `oauth2 <http://pypi.python.org/pypi/oauth2/>`_
+-  `python-openid <http://pypi.python.org/pypi/python-openid>`_
+-  `python-sdk <https://github.com/facebook/python-sdk>`_
 
 Installation
-============
+------------
 
-#. Add the ``socialregistration`` directory to your ``PYTHON_PATH``.
-#. Add ``socialregistration`` to your ``INSTALLED_APPS`` settings of Django.
-#. Add ``socialregistration.urls`` to your ``urls.py`` file.
+::
+
+        pip install django-socialregistration
+        pip install -e git+https://github.com/facebook/python-sdk.git#egg=FacebookSDK
 
 Configuration
-=============
+-------------
 
-Facebook Graph API Connect
+1. Add ``socialregistration`` to your ``INSTALLED_APPS``
+2. Add ``django.core.context_processors.request`` to the
+   `TEMPLATE\_CONTEXT\_PROCESSORS <http://docs.djangoproject.com/en/1.3/ref/settings/#template-context-processors>`_
+3. Include ``socialregistration.urls`` in your top level urls:
+
+   ::
+
+       urlpatterns = patterns('', 
+           # ...
+           url(r'^social/', include('socialregistration.urls')))
+
+4. Make sure you are using a
+   `RequestContext <http://docs.djangoproject.com/en/1.3/ref/templates/api/#subclassing-context-requestcontext>`_
+   wherever you are planning to display the login buttons
+
+   ::
+
+       from django.template import RequestContext
+
+       def login(request):
+           # ...
+           return render_to_response('login.html',
+               {}, context_instance = RequestContext(request))
+
+5. Once you're done, and configured, etc, don't forget to
+   ``python manage.py syncdb`` your project.
+
+Facebook Connect
 ----------------
-#.  The previous connect will be deprecated in further releases for now it's still available.
-#.  This new version will support desktop as well as mobile. Use ``FACEBOOK_DISPLAY`` in your settings file to serve the different platforms. Possibilities: (``touch``, ``wap``, default: ``popup``)
-#.  Add ``FACEBOOK_APP_ID`` and ``FACEBOOK_SECRET_KEY`` to your settings file representing the app id and the secret key you were given by Facebook.
-#.  Add ``socialregistration.auth.FacebookAuth`` to ``AUTHENTICATION_BACKENDS`` in your settings file.
-#.  Add tags to your template file::
 
-	{% load facebook_tags %} 
- 	{% facebook_button %}
+Configuration
+^^^^^^^^^^^^^
+
+1. Add the Facebook API keys to the your settings, variable names are
+
+   ::
+
+       FACEBOOK_APP_ID = ''
+       FACEBOOK_API_KEY = ''
+       FACEBOOK_SECRET_KEY = ''
+
+2. Add ``socialregistration.auth.FacebookAuth`` to
+   `AUTHENTICATION\_BACKENDS <http://docs.djangoproject.com/en/1.3/ref/settings/#authentication-backends>`_
+3. Add ``socialregistration.middleware.FacebookMiddleware`` to
+   `MIDDLEWARE\_CLASSES <http://docs.djangoproject.com/en/1.3/ref/settings/#middleware-classes>`_
+4. (Optional) Add ``FACEBOOK_REQUEST_PERMISSIONS`` to your settings.
+   This is a comma seperated list of the permissions you need. e.g:
+
+   ::
+
+       FACEBOOK_REQUEST_PERMISSIONS = 'email,user_about_me'
+
+Usage
+^^^^^
+
+-  Add tags to your template file
+
+   ::
+
+       {% load facebook_tags %}
+       {% facebook_button %}
+       {% facebook_js %}
+
+You want to keep the ``{% facebook_js %}`` as far down in your HTML
+structure as possible to not impact the load time of the page.
+
+Also make sure you followed the steps to include a ``RequestContext`` in
+your template that is using these tags.
 
 Twitter
 -------
-#. Add the following variables to your ``settings.py`` file with the values you were given by Twitter::
 
-    TWITTER_CONSUMER_KEY
-    TWITTER_CONSUMER_SECRET_KEY
-    TWITTER_REQUEST_TOKEN_URL
-    TWITTER_ACCESS_TOKEN_URL
-    TWITTER_AUTHORIZATION_URL
+Configuration
+^^^^^^^^^^^^^
 
-#. Add ``socialregistration.auth.TwitterAuth`` to ``AUTHENTICATION_BACKENDS`` in your settings file.
+1. Add the Twitter API keys and endpoints to your settings, variable
+   names are
 
-#. Add tags to your template file::
+   ::
 
-    {% load twitter_tags %}
-    {% twitter_button %}
+       TWITTER_CONSUMER_KEY = ''
+       TWITTER_CONSUMER_SECRET_KEY = ''
+       TWITTER_REQUEST_TOKEN_URL = ''
+       TWITTER_ACCESS_TOKEN_URL = ''
+       TWITTER_AUTHORIZATION_URL = ''
 
-LinkedIn
--------
-#. Add the following variables to your ``settings.py`` file with the values you were given by LinkedIn::
+2. Add ``socialregistration.auth.TwitterAuth`` to
+   ``AUTHENTICATION_BACKENDS``
+3. Add the right callback URL to your Twitter account
 
-    LINKEDIN_CONSUMER_KEY
-    LINKEDIN_CONSUMER_SECRET_KEY
-    LINKEDIN_REQUEST_TOKEN_URL
-    LINKEDIN_ACCESS_TOKEN_URL
-    LINKEDIN_AUTHORIZATION_URL
+Usage
+^^^^^
 
-#. Add ``socialregistration.auth.LinkedinAuth`` to ``AUTHENTICATION_BACKENDS`` in your settings file.
+-  Add tags to your template file
 
-#. Add tags to your template file::
+   ::
 
-    {% load linkedin_tags %}
-    {% linkedin_button %}
+       {% load twitter_tags %}
+       {% twitter_button %}
 
-Other OAuth Services
---------------------
-There is an example of how FriendFeed integration could work.
-``socialregistration.models`` provides a ``FriendFeedProfile`` model to save account
-data, ``socialregistration.auth`` provides examples for different auth backends for
-different service providers, ``socialregistration.utils`` provides a Twitter
-and FriendFeed interface and ``socialregistration.urls`` provides examples based
-on Twitter and FriendFeed how to hook in more OAuth based services.
+Same note here. Make sure you're serving the page with a
+``RequestContext``
+
+OAuth
+-----
+
+Check out how the Twitter authentication works. Basically it's just
+plugging together some urls and creating an auth backend, a model and a
+view.
 
 OpenID
 ------
-#. Add ``socialregistration.auth.OpenIDAuth`` to ``AUTHENTICATION_BACKENDS`` in your settings file.
-#. Add tags to your template file::
 
-    {% load openid_tags %}
-    {% openid_form %}
+Configuration
+^^^^^^^^^^^^^
+
+-  Add ``socialregistration.auth.OpenIDAuth`` to
+   ``AUTHENTICATION_BACKENDS``
+
+Usage
+^^^^^
+
+-  Add tags to your template file
+
+   ::
+
+       {% load openid_tags %}
+       {% openid_form %}
 
 Logging users out
 -----------------
-You can use the standard {% url auth_logout %} url to log users out of Django.
-Please note that this will not log users out of third party sites though.
-When using Facebook Connect, it is recommended to follow the FBConnect developer
-wiki. See: http://wiki.developers.facebook.com/index.php/Connect/Authorization_Websites#Logging_Out_Users ::
 
-    <a href="#" onclick="FB.Connect.logoutAndRedirect('{% url auth_logout %}')">Logout</a>
+You can use the standard ``{% url auth_logout %}``. Alternatively there
+is also ``{% url social_logout %}`` which is basically a wrapper around
+``auth_logout``.
 
-HTTPS
------
-If you wish everything to go through HTTPS, set ``SOCIALREGISTRATION_USE_HTTPS`` in your settings file to
-``True``
+*This will log users only out of your site*.
 
-Other Information
------------------
-If you don't wish your users to be redirected to the setup view to create a username but rather have
-a username generated for them, set ``SOCIALREGISTRATION_GENERATE_USERNAME`` in your settings file to ``True``
+To make sure they're logged out of other sites too, use something like
+this:
+
+::
+
+        <a href="#" onclick:"javascript:FB.logout(function(resp){ document.location = '{% url social_logout %}'; })">Logout</a>
+
+Or redirect them to the provider they logged in from.
+
+Additional Settings
+-------------------
+
+::
+
+        SOCIALREGISTRATION_USE_HTTP = False
+        SOCIALREGISTRATION_GENERATE_USERNAME = False
+
+Set either ``True`` if you want to enable HTTPS or have the users skip
+the username form.
+
+Signals
+-------
+
+The app provides two signals that fire when users connect their accounts
+and log in:
+
+::
+
+        socialregistration.signals.connect
+        socialregistration.signals.login
+
+The signal handlers needs to accept three arguments, and can listen on
+specific profiles:
+
+::
+
+        from socialregistration import signals
+        from socialregistration import models
+
+        def connect_facebook(user, profile, client, **kwargs):
+            # Do fancy stuff like fetching more user info with the client
+            pass
+
+        def login_facebook(user, profile, client, **kwargs):
+            # Do fancy stuff like finding logged in friends
+            pass
+
+        signals.connect.connect(connect_facebook, sender = models.FacebookProfile)
+        signals.login.connect(login_facebook, sender = models.FacebookProfile)
+
+This works too with OpenID and OAuth profiles.
