@@ -131,7 +131,7 @@ class OpenID(object):
         self.store = OpenIDStore()
         self.consumer = openid.Consumer(self.request.session, self.store)
         self.result = None
-                    
+
     def get_redirect(self):
         auth_request = self.consumer.begin(self.endpoint)
         redirect_url = auth_request.redirectURL(
@@ -330,4 +330,24 @@ class OAuthTwitter(OAuth):
 
     def get_user_info(self):
         user = simplejson.loads(self.query(self.url))
+        return user
+
+class OAuthLinkedin(OAuth):
+    """
+    Verifying linkedin credentials
+    """
+    url = 'http://api.linkedin.com/v1/people/~:(id,first-name,last-name)'
+
+    def get_user_info(self):
+        user = dict()
+        user_xml = self.query(self.url)
+
+        xml = minidom.parseString(user_xml)
+        user['id'] = xml.getElementsByTagName('id')[0].childNodes[0].nodeValue
+        first_name = xml.getElementsByTagName('first-name')[0].childNodes[0].nodeValue
+        last_name = xml.getElementsByTagName('last-name')[0].childNodes[0].nodeValue
+
+        user['screen_name'] = '%(first_name)s %(last_name)s' % {'first_name': first_name,
+                                                                'last_name': last_name }
+
         return user

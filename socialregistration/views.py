@@ -1,4 +1,4 @@
-import uuid
+import uuid, urllib, facebook
 
 from django.conf import settings
 from django.template import RequestContext
@@ -20,9 +20,8 @@ from django.contrib.sites.models import Site
 from socialregistration.forms import UserForm
 from socialregistration.utils import (OAuthClient, OAuthTwitter,
     OpenID, _https, DiscoveryFailure)
-from socialregistration.models import FacebookProfile, TwitterProfile, OpenIDProfile
+from socialregistration.models import FacebookProfile, TwitterProfile, LinkedinProfile, OpenIDProfile
 from socialregistration import signals
-
 
 FB_ERROR = _('We couldn\'t validate your Facebook credentials')
 
@@ -167,7 +166,8 @@ def facebook_connect(request, template='socialregistration/facebook.html',
 
         access_token = res_parse_qs['access_token'][-1]
 
-    user_info = request.facebook.graph.get_object('me')
+    graph = facebook.GraphAPI(access_token)
+    user_info = graph.get_object('me')
 
     if request.user.is_authenticated():
         # Handling already logged in users connecting their accounts
@@ -188,36 +188,19 @@ def facebook_connect(request, template='socialregistration/facebook.html',
 
     user = authenticate(uid=user_info['id'])
 
-    if not user:
-        request.session['socialregistration_user'] = User()
-        request.session['socialregistration_profile'] = FacebookProfile(
-                uid=user_info['id'],
-                username=user_info['name'],
-                access_token=access_token
-            )
+    if user is None:
+        profile = FacebookProfile(uid=user_info['id'],
+                                  username=user_info['name'],
+                                  access_token=access_token)
+        user = User()
+        request.session['socialregistration_profile'] = profile
+        request.session['socialregistration_user'] = user
+        # Client is not pickleable with the request on it
+        request.session['socialregistration_client'] = request.facebook
         request.session['next'] = _get_next(request)
-
         return HttpResponseRedirect(reverse('socialregistration_setup'))
 
     _login(request, user, FacebookProfile.objects.get(user = user), request.facebook)
-
-    return HttpResponseRedirect(_get_next(request))
-
-def facebook_connect(request, template='socialregistration/facebook.html',
-    extra_context=dict()):
-    """
-    View to handle connecting existing django accounts with facebook
-    """
-    if request.facebook.uid is None or request.user.is_authenticated() is False:
-        extra_context.update(dict(error=FB_ERROR))
-        return render_to_response(template, extra_context,
-            context_instance=RequestContext(request))
-
-    try:
-        profile = FacebookProfile.objects.get(uid=request.facebook.uid)
-    except FacebookProfile.DoesNotExist:
-        profile = FacebookProfile.objects.create(user=request.user,
-            uid=request.facebook.uid)
 
     return HttpResponseRedirect(_get_next(request))
 
@@ -256,7 +239,7 @@ def twitter(request, account_inactive_template='socialregistration/account_inact
             profile = TwitterProfile.objects.create(user=request.user,
                                                     twitter_id=user_info['id'],
                                                     username=user_info['screen_name'])
-            _connect(user, profile, client)
+            _connect(request.user, profile, client)
 
         return HttpResponseRedirect(_get_next(request))
 
@@ -282,6 +265,57 @@ def twitter(request, account_inactive_template='socialregistration/account_inact
         )
 
     _login(request, user, TwitterProfile.objects.get(user = user), client)
+
+    return HttpResponseRedirect(_get_next(request))
+
+def linkedin(request, account_inactive_template='socialregistration/account_inactive.html',
+    extra_context=dict(), client_class=None):
+    """
+    Actually setup/login an account relating to a twitter user after the oauth
+    process is finished successfully
+    """
+    client = client_class(
+        request, settings.LINKEDIN_CONSUMER_KEY,
+        settings.LINKEDIN_CONSUMER_SECRET_KEY,
+        settings.LINKEDIN_REQUEST_TOKEN_URL,
+    )
+
+    user_info = client.get_user_info()
+
+    if request.user.is_authenticated():
+        # Handling already logged in users connecting their accounts
+        try:
+            profile = LinkedinProfile.objects.get(linkedin_id=user_info['id'])
+        except TwitterProfile.DoesNotExist: # There can only be one profile!
+            profile = LinkedinProfile.objects.create(user=request.user,
+                                                     linkedin_id=user_info['id'],
+                                                     username=user_info['screen_name'])
+            _connect(user, profile, client)
+
+        return HttpResponseRedirect(_get_next(request))
+
+    user = authenticate(linkedin_id=user_info['id'])
+
+    if user is None:
+        profile = LinkedinProfile(linkedin_id=user_info['id'],
+                                  username=user_info['screen_name'])
+        user = User()
+        request.session['socialregistration_profile'] = profile
+        request.session['socialregistration_user'] = user
+        # Client is not pickleable with the request on it
+        client.request = None
+        request.session['socialregistration_client'] = client
+        request.session['next'] = _get_next(request)
+        return HttpResponseRedirect(reverse('socialregistration_setup'))
+
+    if not user.is_active:
+        return render_to_response(
+            account_inactive_template,
+            extra_context,
+            context_instance=RequestContext(request)
+        )
+
+    _login(request, user, LinkedinProfile.objects.get(user = user), client)
 
     return HttpResponseRedirect(_get_next(request))
 
