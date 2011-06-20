@@ -142,10 +142,9 @@ def facebook_connect(request, template='socialregistration/facebook.html',
     Authorize and create user if none
 
     """
-    if request.facebook.uid:
+    try:
         uid = request.facebook.uid
-        access_token = request.facebook.access_token
-    else:
+    except:
         # if cookie does not exist
         # assume logging in normal way
         params = {}
@@ -165,6 +164,8 @@ def facebook_connect(request, template='socialregistration/facebook.html',
                                       context_instance=RequestContext(request))
 
         access_token = res_parse_qs['access_token'][-1]
+    else:
+        access_token = request.facebook.access_token
 
     graph = facebook.GraphAPI(access_token)
     user_info = graph.get_object('me')
@@ -229,7 +230,14 @@ def twitter(request, account_inactive_template='socialregistration/account_inact
         settings.TWITTER_REQUEST_TOKEN_URL,
     )
 
-    user_info = client.get_user_info()
+    try:
+        user_info = client.get_user_info()
+    except:
+        return render_to_response(
+            account_inactive_template,
+            extra_context,
+            context_instance=RequestContext(request)
+        )
 
     if request.user.is_authenticated():
         # Handling already logged in users connecting their accounts
@@ -280,7 +288,14 @@ def linkedin(request, account_inactive_template='socialregistration/account_inac
         settings.LINKEDIN_REQUEST_TOKEN_URL,
     )
 
-    user_info = client.get_user_info()
+    try:
+        user_info = client.get_user_info()
+    except:
+        return render_to_response(
+            account_inactive_template,
+            extra_context,
+            context_instance=RequestContext(request)
+        )
 
     if request.user.is_authenticated():
         # Handling already logged in users connecting their accounts
