@@ -143,7 +143,7 @@ def facebook_connect(request, template='socialregistration/facebook.html',
 
     """
     try:
-        uid = request.facebook.uid
+        access_token = request.facebook.access_token
     except:
         # if cookie does not exist
         # assume logging in normal way
@@ -165,7 +165,7 @@ def facebook_connect(request, template='socialregistration/facebook.html',
 
         access_token = res_parse_qs['access_token'][-1]
     else:
-        access_token = request.facebook.access_token
+        uid = request.facebook.uid
 
     graph = facebook.GraphAPI(access_token)
     user_info = graph.get_object('me')
