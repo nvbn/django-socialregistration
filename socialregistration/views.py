@@ -301,11 +301,11 @@ def linkedin(request, account_inactive_template='socialregistration/account_inac
         # Handling already logged in users connecting their accounts
         try:
             profile = LinkedinProfile.objects.get(linkedin_id=user_info['id'])
-        except TwitterProfile.DoesNotExist: # There can only be one profile!
+        except LinkedinProfile.DoesNotExist: # There can only be one profile!
             profile = LinkedinProfile.objects.create(user=request.user,
                                                      linkedin_id=user_info['id'],
                                                      username=user_info['screen_name'])
-            _connect(user, profile, client)
+            _connect(request.user, profile, client)
 
         return HttpResponseRedirect(_get_next(request))
 
