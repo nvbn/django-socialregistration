@@ -1,3 +1,5 @@
+Version created only for work with * [specific facebook sdk] (https://github.com/nvbn/python-sdk/) !
+
 # Django Social Registration
 
 Django Social Registration enables developers to add alternative registration
@@ -18,8 +20,8 @@ Supported methods currently are:
 
 ## Installation
 
-		pip install django-socialregistration
-		pip install -e git+https://github.com/facebook/python-sdk.git#egg=FacebookSDK
+		pip install -e git+https://github.com/nvbn/django-socialregistration.git#egg=socialregistration
+		pip install -e git+https://github.com/nvbn/python-sdk.git#egg=FacebookSDK
 	
 ## Configuration
 

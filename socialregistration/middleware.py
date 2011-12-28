@@ -3,11 +3,12 @@ from django.conf import settings
 
 class Facebook(object):
     def __init__(self, user=None):
+        self.user = user
         if user is None:
             self.uid = None
+            self.graph = {}
         else:
             self.uid = user['uid']
-            self.user = user
             self.graph = facebook.GraphAPI(user['access_token'])
 
 
@@ -19,10 +20,10 @@ class FacebookMiddleware(object):
         You might want to use this if you don't feel confortable with the 
         javascript library.
         """
-        
-        fb_user = facebook.get_user_from_cookie(request.COOKIES,
-            getattr(settings, 'FACEBOOK_APP_ID', settings.FACEBOOK_API_KEY), settings.FACEBOOK_SECRET_KEY)
-
+        try:
+            fb_user = facebook.get_user_from_cookie(request.COOKIES,
+                getattr(settings, 'FACEBOOK_APP_ID', settings.FACEBOOK_API_KEY), settings.FACEBOOK_SECRET_KEY)
+        except facebook.GraphAPIError:
+            fb_user = None
         request.facebook = Facebook(fb_user)
-        
         return None
