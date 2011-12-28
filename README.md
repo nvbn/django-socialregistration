@@ -1,4 +1,4 @@
-Version created only for work with * [specific facebook sdk] (https://github.com/nvbn/python-sdk/) !
+Version created only for work with [specific facebook sdk] (https://github.com/nvbn/python-sdk/) !
 
 # Django Social Registration
 
