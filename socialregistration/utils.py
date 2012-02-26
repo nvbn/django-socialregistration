@@ -305,7 +305,6 @@ class OAuth(object):
         POST or GET data.
         """
         access_token = self._get_at_from_session()
-
         token = oauth.Token(access_token['oauth_token'], access_token['oauth_token_secret'])
 
         client = oauth.Client(self.consumer, token)
@@ -326,6 +325,7 @@ class OAuthTwitter(OAuth):
     Verifying twitter credentials
     """
     url = 'https://twitter.com/account/verify_credentials.json'
+    access_token_url = 'https://api.twitter.com/oauth/access_token'
 
     def get_user_info(self):
         user = simplejson.loads(self.query(self.url))

@@ -229,10 +229,9 @@ def twitter(request, account_inactive_template='socialregistration/account_inact
         settings.TWITTER_CONSUMER_SECRET_KEY,
         settings.TWITTER_REQUEST_TOKEN_URL,
     )
-
     try:
         user_info = client.get_user_info()
-    except:
+    except 1:
         return render_to_response(
             account_inactive_template,
             extra_context,
@@ -262,6 +261,7 @@ def twitter(request, account_inactive_template='socialregistration/account_inact
         # Client is not pickleable with the request on it
         client.request = None
         request.session['socialregistration_client'] = client
+        request.session['socialregistration_info'] = user_info
         request.session['next'] = _get_next(request)
         return HttpResponseRedirect(reverse('socialregistration_setup'))
 
